@@ -3,58 +3,36 @@ package ml.neuralnet;
 import ml.Matrix;
 import ml.functions.MathFunction;
 
-public class MLP {
-    private final int          nLayers;
-    private final Matrix[]     activations;
-    private final Matrix[]     weights; 
-    private final Matrix[]     biases;
+public class MLP extends FFNN {
     private final MathFunction activation;
+    private final int          nLayers;
 
     public MLP(int[] arch, MathFunction activation) {
-        nLayers     = arch.length - 1;
-        activations = new Matrix[arch.length];
-        weights     = new Matrix[nLayers];
-        biases      = new Matrix[nLayers];
+        super(arch);
         this.activation = activation;
-
-        activations[0] = new Matrix(arch[0], 1);
-        for (int i = 1; i < arch.length; ++i) {
-            activations[i] = new Matrix(arch[i], 1);
-            weights[i-1]   = new Matrix(arch[i], arch[i-1]);
-            biases[i-1]    = new Matrix(arch[i], 1);
-
-            weights[i-1].randomize();
-            biases[i-1].randomize();
-        }
+        this.nLayers    = arch.length - 1;
     }
 
-    public MLP(MLP other, boolean copyValues) {
-        nLayers     = other.nLayers;
-        activation  = other.activation;
-        activations = new Matrix[nLayers+1];
-        weights     = new Matrix[nLayers];
-        biases      = new Matrix[nLayers];
+    private class Grad {  // Auxiliary data class
+        public final Matrix[] activations;
+        public final Matrix[] weights; 
+        public final Matrix[] biases;
 
-        activations[0] = new Matrix(other.activations[0].getRows(), other.activations[0].getCols());
-        if (copyValues)
-            activations[0].copy(other.activations[0]);
-        for (int i = 1; i < nLayers+1; ++i) {
-            activations[i] = new Matrix(other.activations[i].getRows(), other.activations[i].getCols());
-            weights[i-1]   = new Matrix(other.weights[i-1].getRows()  , other.weights[i-1].getCols());
-            biases[i-1]    = new Matrix(other.biases[i-1].getRows()   , other.biases[i-1].getCols());
-            if (copyValues) {
-                activations[i].copy(other.activations[i]);
-                weights[i-1].copy(other.weights[i-1]);
-                biases[i-1].copy(other.biases[i-1]);
+        Grad(MLP net) {
+            activations = new Matrix[net.activations.length];
+            weights     = new Matrix[net.weights.length];
+            biases      = new Matrix[net.biases.length];
+
+            activations[0] = new Matrix(net.activations[0].getRows(), net.activations[0].getCols());
+            for (int i = 1; i < activations.length; ++i) {
+                activations[i] = new Matrix(net.activations[i].getRows(), net.activations[i].getCols());
+                weights[i-1]   = new Matrix(net.weights[i-1].getRows()  , net.weights[i-1].getCols());
+                biases[i-1]    = new Matrix(net.biases[i-1].getRows()   , net.biases[i-1].getCols());
             }
         }
     }
 
-    public MLP createGradContainer() {
-        return new MLP(this, false);
-    }
-
-    void feedForward(Matrix input) {
+    public void feedForward(Matrix input) {
         activations[0].copy(input);
 
         for (int i = 0; i < nLayers; ++i) {
@@ -64,6 +42,63 @@ public class MLP {
             Matrix aPrev = activations[i];
 
             a.mulAndSumAndApplyFunction(w, aPrev, b, activation);
+        }
+    }
+
+    Matrix getOutput() {
+        return activations[nLayers];
+    }
+
+    public float cost(Matrix[] dataset, Matrix[] annotations, int batchSize) {
+        float total = 0.0f;
+
+        for (int i = 0; i < batchSize; ++i) {
+            feedForward(dataset[i]);
+            Matrix output = activations[nLayers];
+            output.minus(annotations[i]);
+            total += output.dot(output);
+        }
+
+        return total / (float)batchSize; 
+    }
+
+    public void backprop(Matrix[] dataset, Matrix[] annotations) {
+        int      batchLen = dataset.length;
+        Grad     gradient = new Grad(this);
+        Matrix[] wGrad    = gradient.weights;
+        Matrix[] bGrad    = gradient.biases;
+        Matrix[] aGrad    = gradient.activations;
+
+        for (int i = 0; i < nLayers; ++i) {
+            wGrad[i].zeroOut();
+            bGrad[i].zeroOut();
+        }
+
+        for (int i = 0; i < batchLen; ++i) {
+            feedForward(dataset[i]);
+
+            aGrad[nLayers].minusAndMul(// 2 * (output - annotation) = cost'()
+                activations[nLayers],  // output layer
+                annotations[i], 
+                2.0f
+            );
+
+            for (int j = 0; j < nLayers; ++j)  // Keep output layer
+                aGrad[j].zeroOut();
+
+            for (int j = nLayers; j > 0; --j) {
+                Matrix currentActivations = activations[j];
+                Matrix prevActivations    = activations[j-1];
+                Matrix currentWeights     = weights[j-i];
+                int rows = currentWeights.getRows();
+                int cols = currentWeights.getCols();
+
+                //
+                //
+                //
+                //
+                //
+            }            
         }
     }
 }

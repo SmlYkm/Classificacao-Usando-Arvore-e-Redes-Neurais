@@ -91,7 +91,7 @@ public class Matrix {
 
     public void randomize() {
         for (int i = 0; i < rows*cols; ++i)
-            arr[i] = (float) Math.random();
+            arr[i] = (float) (Math.random() * 2.0 - 1.0);
     }
 
     // this = a * b
@@ -164,6 +164,15 @@ public class Matrix {
 
         for (int i = 0; i < rows*cols; ++i)
             arr[i] -= other.arr[i];
+    }
+
+    // this = (a - b).mulElemtnwilse( scalar)
+    public void minusAndMul(Matrix a, Matrix b, float scalar) {
+        if (a.cols != b.rows || a.rows != rows || b.cols != cols)
+            throw new MatrixException(a, b, this);
+
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] = (a.arr[i] - b.arr[i]) * scalar;
     }
 
     // dot product of this and other
