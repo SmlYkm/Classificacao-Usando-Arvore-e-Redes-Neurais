@@ -1,6 +1,7 @@
 package ml;
 
 import java.util.stream.IntStream;
+import ml.functions.MathFunction;
 import java.util.Arrays;
 
 public class Matrix {
@@ -61,6 +62,15 @@ public class Matrix {
         return cols;
     }
 
+    public void copy(Matrix other) {
+        int len = rows*cols;
+        if (len != other.rows*other.cols)
+            throw new MatrixException(this, other);
+        
+        for (int i = 0; i < rows; ++i)
+            arr[i] = other.arr[i];
+    }
+
     public float get(int i, int j) {
         if (i < 0 || i >= rows || j < 0 || j >= cols)
             throw new MatrixException(i, j, this);
@@ -115,6 +125,25 @@ public class Matrix {
                     temp += a.arr[i * a.cols + k] * b.arr[k * b.cols + j];
                 
                 arr[idx] = temp;
+            }
+        });
+    }
+
+    public void mulAndSumAndApplyFunction(Matrix a, Matrix b, Matrix c, MathFunction f) {
+        if (a.cols != b.rows || a.rows != rows || b.cols != cols)
+            throw new MatrixException(a, b, this);
+        if (rows != c.rows || cols != c.cols)
+            throw new MatrixException(this, c);
+        
+        IntStream.range(0, rows).parallel().forEach((i) -> {
+            for (int j = 0; j < cols; ++j) {
+                int   idx  = i * cols + j;
+                float temp = c.arr[idx];
+
+                for (int k = 0; k < a.cols; ++k)
+                    temp += a.arr[i * a.cols + k] * b.arr[k * b.cols + j];
+                
+                arr[idx] = f.compute(temp);
             }
         });
     }
