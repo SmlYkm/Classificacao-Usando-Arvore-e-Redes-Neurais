@@ -77,11 +77,9 @@ public class MLP extends FFNN {
         for (int i = 0; i < batchLen; ++i) {
             feedForward(dataset[i]);
             // output = a*w + b
-            //
             //                     1                               1
             // c = cost function = - * sum{(output-annotation)²} = - * sum{ [(a*w + b)-annotation]² }
             //                     n                               n
-            //
             // dc    d 1                                    1
             // -- = -- - * sum{ [(a*w + b)-annotation]² } = - * 2 (a-annotation)
             // da   da n                                    n
@@ -92,38 +90,27 @@ public class MLP extends FFNN {
             // -- = a - annotation
             // da
 
-            aGrad[nLayers].minusAndMul(// TODO: replace "2": 2 * (output - annotation) 
+            aGrad[nLayers].minus(      // output - annotation 
                 activations[nLayers],  // output layer
-                annotations[i], 
-                2.0f
+                annotations[i]
             );
 
-            for (int j = 0; j < nLayers; ++j)  // Keep output layer
-                aGrad[j].zeroOut();
+            // for (int j = 0; j < nLayers; ++j)  // Keep output layer
+            //     aGrad[j].zeroOut();
 
             for (int j = nLayers; j > 0; --j) {
                 Matrix currentActivations = activations[j];
                 Matrix prevActivations    = activations[j-1];
-                Matrix currentWeights     = weights[j-i];
-                int rows = currentWeights.getRows();
-                int cols = currentWeights.getCols();
+                Matrix currentWeights     = weights[j-1];
 
                 // a = currentActivations
-                //
-                //                     1
-                // c = cost function = - * sum{(output-annotation)²}
-                //                     n
-                //
-                // z = w*a + b
-                //
-                // dz   d
-                // -- = -- (w*a + b) ===> dz = db
-                // db   db
-                //
-                // da   da   
-                // -- = -- = σ'(a)
-                // db   dz
-                //
+                //                     1                            
+                // c = cost function = - * sum{(output-annotation)²}     z = w*a + b
+                //                     n                            
+                // dz   d                                                da   da        
+                // -- = -- (w*a + b) ===> dz = db                        -- = -- = σ'(a)
+                // db   db                                               db   dz        
+
                 // dc           
                 // -- = aGrad[j] 
                 // da           
@@ -131,16 +118,14 @@ public class MLP extends FFNN {
                 // dc   dc   dc   da
                 // -- = -- = -- * -- = bGrad[j-1]
                 // db   db   da   dz
-                //
-                // bGrad[j-1] = aGrad[j] * currentActivations.apply(Sigmoid.derivative)
-
-                // dz
-                // -- = prevActivations
-                // dw
-                //
-                // dc   da   dc   dz
-                // -- = -- * -- * --
-                // dw   dz   da   dw
+                currentActivations.applyDerivative(activation);
+                //Matrix dA_dZ = new Matrix(currentActivations);  // TODO: pre allocate
+                bGrad[j-1].mul(aGrad[j], currentActivations);
+                
+                // dz                      dc   da   dc   dz
+                // -- = prevActivations    -- = -- * -- * --
+                // dw                      dw   dz   da   dw
+                wGrad[j-1].mul(currentWeights, prevActivations);
             }            
         }
     }

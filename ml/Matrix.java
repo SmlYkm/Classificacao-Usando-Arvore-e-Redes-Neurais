@@ -54,6 +54,15 @@ public class Matrix {
         this.arr  = new float[rows * cols];
     }
 
+    public Matrix(Matrix other) {
+        rows = other.rows;
+        cols = other.cols;
+        arr  = new float[rows*cols];
+
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] = other.arr[i];
+    }
+
     public int getRows() {
         return rows;
     }
@@ -166,6 +175,15 @@ public class Matrix {
             arr[i] -= other.arr[i];
     }
 
+    // this = a - b
+    public void minus(Matrix a, Matrix b) {
+        if (a.cols != b.rows || a.rows != rows || b.cols != cols)
+            throw new MatrixException(a, b, this);
+
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] = a.arr[i] - b.arr[i];
+    }
+
     // this = (a - b).mulElemtnwilse( scalar)
     public void minusAndMul(Matrix a, Matrix b, float scalar) {
         if (a.cols != b.rows || a.rows != rows || b.cols != cols)
@@ -173,6 +191,16 @@ public class Matrix {
 
         for (int i = 0; i < rows*cols; ++i)
             arr[i] = (a.arr[i] - b.arr[i]) * scalar;
+    }
+
+    public void apply(MathFunction f) {
+        for (float it : arr)
+            it = f.compute(it);
+    }
+
+    public void applyDerivative(MathFunction f) {
+        for (float it : arr)
+            it = f.derivative(it);
     }
 
     // dot product of this and other
