@@ -76,8 +76,23 @@ public class MLP extends FFNN {
 
         for (int i = 0; i < batchLen; ++i) {
             feedForward(dataset[i]);
+            // output = a*w + b
+            //
+            //                     1                               1
+            // c = cost function = - * sum{(output-annotation)²} = - * sum{ [(a*w + b)-annotation]² }
+            //                     n                               n
+            //
+            // dc    d 1                                    1
+            // -- = -- - * sum{ [(a*w + b)-annotation]² } = - * 2 (a-annotation)
+            // da   da n                                    n
+            //
+            // 2/n can be omited since it will be rescaled by the learning rate, thus
+            //
+            // dc
+            // -- = a - annotation
+            // da
 
-            aGrad[nLayers].minusAndMul(// 2 * (output - annotation) = cost'()
+            aGrad[nLayers].minusAndMul(// TODO: replace "2": 2 * (output - annotation) 
                 activations[nLayers],  // output layer
                 annotations[i], 
                 2.0f
@@ -93,11 +108,39 @@ public class MLP extends FFNN {
                 int rows = currentWeights.getRows();
                 int cols = currentWeights.getCols();
 
+                // a = currentActivations
                 //
+                //                     1
+                // c = cost function = - * sum{(output-annotation)²}
+                //                     n
                 //
+                // z = w*a + b
                 //
+                // dz   d
+                // -- = -- (w*a + b) ===> dz = db
+                // db   db
                 //
+                // da   da   
+                // -- = -- = σ'(a)
+                // db   dz
                 //
+                // dc           
+                // -- = aGrad[j] 
+                // da           
+                //
+                // dc   dc   dc   da
+                // -- = -- = -- * -- = bGrad[j-1]
+                // db   db   da   dz
+                //
+                // bGrad[j-1] = aGrad[j] * currentActivations.apply(Sigmoid.derivative)
+
+                // dz
+                // -- = prevActivations
+                // dw
+                //
+                // dc   da   dc   dz
+                // -- = -- * -- * --
+                // dw   dz   da   dw
             }            
         }
     }
