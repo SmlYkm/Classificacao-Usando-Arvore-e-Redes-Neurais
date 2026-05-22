@@ -2,15 +2,23 @@ package ml.neuralnet;
 
 import ml.Matrix;
 import ml.functions.MathFunction;
+import ml.functions.Sigmoid;
+import java.util.Random;
 
 public class MLP extends FFNN {
-    private final MathFunction activation;
     private final int          nLayers;
+    private final Grad         gradient;
+    private final Random       randomizer;
+    private       float        rate;
+    private       MathFunction activation;
 
-    public MLP(int[] arch, MathFunction activation) {
+    public MLP(int[] arch) {
         super(arch);
-        this.activation = activation;
-        this.nLayers    = arch.length - 1;
+        activation  = new Sigmoid();  // fallback 
+        nLayers     = arch.length - 1;
+        gradient    = new Grad(this);
+        randomizer  = new Random();
+        rate        = 0.5f;           // fallback
     }
 
     private class Grad {  // Auxiliary data class
@@ -49,7 +57,7 @@ public class MLP extends FFNN {
         return activations[nLayers];
     }
 
-    public float cost(Matrix[] dataset, Matrix[] annotations, int batchSize) {
+    public float cost(int batchSize) {
         float total = 0.0f;
 
         for (int i = 0; i < batchSize; ++i) {
@@ -62,9 +70,8 @@ public class MLP extends FFNN {
         return total / (float)batchSize; 
     }
 
-    public void backprop(Matrix[] dataset, Matrix[] annotations) {
+    public void backprop() {
         int      batchLen = dataset.length;
-        Grad     gradient = new Grad(this);
         Matrix[] wGrad    = gradient.weights;
         Matrix[] bGrad    = gradient.biases;
         Matrix[] aGrad    = gradient.activations;
@@ -94,11 +101,11 @@ public class MLP extends FFNN {
                 for (int j = 0; j < rows; ++j) {                    //      a = σ(z) => -- = σ(z)⋅(1−σ(z)) = a⋅(1-a)
                     float a     = aCrnt.get(j);                     //                  dz
                     float dc_da = aGrad[l].get(j);                  //                      dc   dc da
-                    float da_dz = a * (1.0f - a);                   //                  δ = -- = --*--
+                    float da_dz = activation.derivative(a);         //                  δ = -- = --*--
                     float delta = da_dz*dc_da;                      //                      db   da dz
-                                                                    //           dz    d
-                    bGrad[l-1].set(j, delta);                       //           -- = --(aPrev*w + b) = aPrev
-                                                                    //           dw   dw
+                                                                    //           dz     d
+                    bGrad[l-1].plusAt(j, 0, delta);              //           --- = ---(aPrev*w + b) = aPrev
+                                                                    //           dw    dw
                     for (int k = 0; k < cols; ++k) {                // dc   da dc dz  |  dc   da dc dz  |  dz    d
                         float dz_dw = aPrev.get(k);                 // -- = --*--*--  |  -- = --*--*--  |  -- = --(a*w + b) = w
                         float w     = wPrev.get(j, k);              // dw   dz da dw  |  da   dz da da  |  da   da
@@ -107,6 +114,60 @@ public class MLP extends FFNN {
                     }                                               
                 }
             }
+        }
+    }
+
+
+    public void learn() {
+        Matrix wGrad[] = gradient.weights;
+        Matrix bGrad[] = gradient.biases;
+        Matrix aGrad[] = gradient.activations;
+
+        for (int l = 0; l < nLayers; ++l) {
+            weights[l].minusAndMul(wGrad[l], rate);
+            biases[l].minusAndMul(bGrad[l], rate);
+            activations[l].minusAndMul(aGrad[l], rate);
+        }
+    }
+
+    private void shuffle() {
+        if (dataset == null || annotations == null || dataset.length != annotations.length)
+            return;
+        for (int i = dataset.length; i > 0; --i) {
+            int pos = randomizer.nextInt(i+1);
+
+            Matrix temp  = dataset[i];   // sawp inputs
+            dataset[i]   = dataset[pos];
+            dataset[pos] = temp;
+
+            temp             = annotations[i];  // Swap outputs
+            annotations[i]   = annotations[pos];
+            annotations[pos] = temp;
+        }
+    }
+
+    private void runEpoch(int nBatches) {
+        shuffle();
+        for (int j = 0; j < nBatches; ++j) {
+            backprop();
+            learn();
+        }
+    }
+
+    // Stochastic Gradient Descent
+    public void sgd(int epochs, int batchlen) {
+        int nSamples     = dataset.length;
+        int nBatches     = nSamples / batchlen;
+        int lastBatchlen = nSamples % batchlen;
+    
+        if (lastBatchlen > 0) {
+            for (int i = 0; i < epochs; ++i) 
+                runEpoch(nBatches);
+            backprop();
+            learn();
+        } else {
+            for (int i = 0; i < epochs; ++i) 
+                runEpoch(nBatches);
         }
     }
 }

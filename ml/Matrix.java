@@ -206,6 +206,14 @@ public class Matrix {
             arr[i] = a.arr[i] - b.arr[i];
     }
 
+    // this[i][j] -= value
+    public void minusAt(int i, int j, float value) {
+        if (i < 0 || i >= rows || j < 0 || j >= cols)
+            throw new MatrixException(i, j, this);
+
+        arr[i*cols + j] -= value;
+    }
+
     // this = (a - b).mulElemtnwilse( scalar)
     public void minusAndMul(Matrix a, Matrix b, float scalar) {
         if (a.rows != b.rows || a.cols != b.cols ||rows != a.rows || cols != a.cols)
@@ -213,6 +221,15 @@ public class Matrix {
 
         for (int i = 0; i < rows*cols; ++i)
             arr[i] = (a.arr[i] - b.arr[i]) * scalar;
+    }
+
+    // this = this - m.mulElementwise(scalar)
+    public void minusAndMul(Matrix other, float scalar) {
+        if (other.rows != rows || other.cols != cols)
+            throw new MatrixException(this, other, this);
+
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] -= other.arr[i] * scalar;
     }
 
     public void apply(MathFunction f) {
