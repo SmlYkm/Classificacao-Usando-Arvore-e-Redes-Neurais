@@ -7,6 +7,13 @@ abstract class FFNN {  // FFNN = feed forward neural net
     protected final Matrix[] weights; 
     protected final Matrix[] biases;
 
+    // private class NeuralNetException extends RuntimeException{
+    //     NeuralNetException(String message) {
+    //         super(message);
+    //     }
+    // }
+
+
     FFNN(int[] arch) {
         int nLayers = arch.length - 1;
         activations = new Matrix[arch.length];

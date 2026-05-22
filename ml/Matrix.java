@@ -76,7 +76,7 @@ public class Matrix {
         if (len != other.rows*other.cols)
             throw new MatrixException(this, other);
         
-        for (int i = 0; i < rows; ++i)
+        for (int i = 0; i < len; ++i)
             arr[i] = other.arr[i];
     }
 
@@ -87,11 +87,25 @@ public class Matrix {
         return arr[i*cols + j];
     }
 
+    public float get(int i) {
+        if (i < 0 || i >= rows*cols)
+            throw new MatrixException(i, i, this);
+
+        return arr[i];
+    }
+
     public void set(int i, int j, float value) {
         if (i < 0 || i >= rows || j < 0 || j >= cols)
             throw new MatrixException(i, j, this);
 
         arr[i*cols + j] = value;
+    }
+
+    public void set(int i, float value) {
+        if (i < 0 || i >= rows*cols)
+            throw new MatrixException(i, i, this);
+
+        arr[i] = value;
     }
 
     public void zeroOut() {
@@ -166,6 +180,14 @@ public class Matrix {
             arr[i] += other.arr[i];
     }
 
+    // this[i][j] += value
+    public void plusAt(int i, int j, float value) {
+        if (i < 0 || i >= rows || j < 0 || j >= cols)
+            throw new MatrixException(i, j, this);
+
+        arr[i*cols + j] += value;
+    }
+
     // this = this - other
     public void minus(Matrix other) {
         if (rows != other.rows || cols != other.cols)
@@ -177,7 +199,7 @@ public class Matrix {
 
     // this = a - b
     public void minus(Matrix a, Matrix b) {
-        if (a.cols != b.rows || a.rows != rows || b.cols != cols)
+        if (a.rows != b.rows || a.cols != b.cols ||rows != a.rows || cols != a.cols)
             throw new MatrixException(a, b, this);
 
         for (int i = 0; i < rows*cols; ++i)
@@ -186,7 +208,7 @@ public class Matrix {
 
     // this = (a - b).mulElemtnwilse( scalar)
     public void minusAndMul(Matrix a, Matrix b, float scalar) {
-        if (a.cols != b.rows || a.rows != rows || b.cols != cols)
+        if (a.rows != b.rows || a.cols != b.cols ||rows != a.rows || cols != a.cols)
             throw new MatrixException(a, b, this);
 
         for (int i = 0; i < rows*cols; ++i)
@@ -194,13 +216,13 @@ public class Matrix {
     }
 
     public void apply(MathFunction f) {
-        for (float it : arr)
-            it = f.compute(it);
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] = f.compute(arr[i]);
     }
 
     public void applyDerivative(MathFunction f) {
-        for (float it : arr)
-            it = f.derivative(it);
+        for (int i = 0; i < rows*cols; ++i)
+            arr[i] = f.derivative(arr[i]);
     }
 
     // dot product of this and other

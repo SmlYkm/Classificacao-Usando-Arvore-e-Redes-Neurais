@@ -76,57 +76,37 @@ public class MLP extends FFNN {
 
         for (int i = 0; i < batchLen; ++i) {
             feedForward(dataset[i]);
-            // output = a*w + b
-            //                     1                               1
-            // c = cost function = - * sum{(output-annotation)²} = - * sum{ [(a*w + b)-annotation]² }
-            //                     n                               n
-            // dc    d 1                                    1
-            // -- = -- - * sum{ [(a*w + b)-annotation]² } = - * 2 (a-annotation)
-            // da   da n                                    n
-            //
-            // 2/n can be omited since it will be rescaled by the learning rate, thus
-            //
-            // dc
-            // -- = a - annotation
-            // da
 
-            aGrad[nLayers].minus(      // output - annotation 
-                activations[nLayers],  // output layer
-                annotations[i]
-            );
+            aGrad[nLayers].minus(              // dc    d  n (a-y)²   2
+                getOutput(), annotations[i]    // -- = --  Σ -----  = -*(a-y) => 2/n can be ignored because of the learning rate
+            );                                 // da   da i=1  n      n
 
-            // for (int j = 0; j < nLayers; ++j)  // Keep output layer
-            //     aGrad[j].zeroOut();
-
-            for (int j = nLayers; j > 0; --j) {
-                Matrix currentActivations = activations[j];
-                Matrix prevActivations    = activations[j-1];
-                Matrix currentWeights     = weights[j-1];
-
-                // a = currentActivations
-                //                     1                            
-                // c = cost function = - * sum{(output-annotation)²}     z = w*a + b
-                //                     n                            
-                // dz   d                                                da   da        
-                // -- = -- (w*a + b) ===> dz = db                        -- = -- = σ'(a)
-                // db   db                                               db   dz        
-
-                // dc           
-                // -- = aGrad[j] 
-                // da           
-                //
-                // dc   dc   dc   da
-                // -- = -- = -- * -- = bGrad[j-1]
-                // db   db   da   dz
-                currentActivations.applyDerivative(activation);
-                //Matrix dA_dZ = new Matrix(currentActivations);  // TODO: pre allocate
-                bGrad[j-1].mul(aGrad[j], currentActivations);
-                
-                // dz                      dc   da   dc   dz
-                // -- = prevActivations    -- = -- * -- * --
-                // dw                      dw   dz   da   dw
-                wGrad[j-1].mul(currentWeights, prevActivations);
-            }            
+            for (int j = 0; j < nLayers; ++j)  // Keep output, zero out the rest
+                aGrad[j].zeroOut();
+        
+            for (int l = nLayers; l > 0; --l) {
+                Matrix aCrnt = activations[l];
+                Matrix aPrev = activations[l-1];
+                Matrix wPrev = weights[l-1];
+                int    rows  = wPrev.getRows();
+                int    cols  = wPrev.getCols();
+                                                                    //                  da
+                for (int j = 0; j < rows; ++j) {                    //      a = σ(z) => -- = σ(z)⋅(1−σ(z)) = a⋅(1-a)
+                    float a     = aCrnt.get(j);                     //                  dz
+                    float dc_da = aGrad[l].get(j);                  //                      dc   dc da
+                    float da_dz = a * (1.0f - a);                   //                  δ = -- = --*--
+                    float delta = da_dz*dc_da;                      //                      db   da dz
+                                                                    //           dz    d
+                    bGrad[l-1].set(j, delta);                       //           -- = --(aPrev*w + b) = aPrev
+                                                                    //           dw   dw
+                    for (int k = 0; k < cols; ++k) {                // dc   da dc dz  |  dc   da dc dz  |  dz    d
+                        float dz_dw = aPrev.get(k);                 // -- = --*--*--  |  -- = --*--*--  |  -- = --(a*w + b) = w
+                        float w     = wPrev.get(j, k);              // dw   dz da dw  |  da   dz da da  |  da   da
+                        wGrad[l-1].plusAt(j, k, da_dz*dc_da*dz_dw); 
+                        aGrad[l-1].plusAt(k, 0, da_dz*dc_da*w);
+                    }                                               
+                }
+            }
         }
     }
 }
