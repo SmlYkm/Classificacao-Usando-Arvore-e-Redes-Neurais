@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.HashMap;
 import ml.Matrix;
 
-public class DecisionTree {
+public class DecisionTree {  // Vibe coded
     private      Node   root;
     private final int   maxDepth;
     private final int[] allowedFeatures;
