@@ -101,7 +101,7 @@ public class MLP extends FFNN {
         }
 
         for (int i = startIdx; i < startIdx + currentBatchLen; ++i) {
-            int idx = (i >= dataset.length) ? i%dataset.length : i;  // In case i goes out of bounds
+            int idx = (i >= dataset.length) ? (i % dataset.length) : i;  // In case i goes out of bounds
             
             feedForward(dataset[idx]);
 
@@ -130,8 +130,8 @@ public class MLP extends FFNN {
                     for (int k = 0; k < cols; ++k) {                // dc   da dc dz  |  dc   da dc dz  |  dz    d
                         float dz_dw = aPrev.get(k);                 // -- = --*--*--  |  -- = --*--*--  |  -- = --(a*w + b) = w
                         float w     = wPrev.get(j, k);              // dw   dz da dw  |  da   dz da da  |  da   da
-                        wGrad[l-1].plusAt(j, k, da_dz*dc_da*dz_dw); 
-                        aGrad[l-1].plusAt(k, 0, da_dz*dc_da*w);
+                        wGrad[l-1].plusAt(j, k, delta*dz_dw); 
+                        aGrad[l-1].plusAt(k, 0, delta*w);
                     }                                               
                 }
             }
@@ -154,7 +154,7 @@ public class MLP extends FFNN {
     private void shuffle() {
         if (dataset == null || annotations == null || dataset.length != annotations.length)
             return;
-            
+
         for (int i = dataset.length - 1; i > 0; --i) {
             int pos = randomizer.nextInt(i + 1);
             Matrix temp  = dataset[i];   // sawp inputs

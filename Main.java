@@ -1,53 +1,60 @@
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 import ml.Matrix;
-import ml.neuralnet.MLP;
+import ml.tree.DecisionTree;
 
 public class Main {
-    public static void main(String[] args) {
-        // 1. Architecture: 2 inputs, 4 hidden neurons, 1 output
-        int[] arch = {2, 4, 1};
-        MLP nn = new MLP(arch);
+    public static void main(String[] args) throws Exception {
+        // 1. Read the dataset
+        List<float[]> dataList = new ArrayList<>();
+        Scanner scanner = new Scanner(new File("02_treino_sinais_vitais_com_label.txt"));
         
-        // nn.setLearningRate(0.5f); // Use this if you add the setter!
+        while (scanner.hasNextLine()) {
+            String[] parts = scanner.nextLine().trim().split(",");
+            float[] row = new float[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                row[i] = Float.parseFloat(parts[i]);
+            }
+            dataList.add(row);
+        }
+        scanner.close();
 
-        // 2. Prepare XOR Dataset
-        Matrix[] X = new Matrix[4];
-        Matrix[] Y = new Matrix[4];
-
-        for (int i = 0; i < 4; i++) {
-            X[i] = new Matrix(2, 1);
-            Y[i] = new Matrix(1, 1);
+        // Populate Matrix
+        int totalRows = dataList.size();
+        int cols = dataList.get(0).length;
+        Matrix dataset = new Matrix(totalRows, cols);
+        for (int i = 0; i < totalRows; i++) {
+            for (int j = 0; j < cols; j++) {
+                dataset.set(i, j, dataList.get(i)[j]);
+            }
         }
 
-        // 0 XOR 0 = 0
-        X[0].set(0, 0, 0.0f); X[0].set(1, 0, 0.0f); Y[0].set(0, 0, 0.0f);
-        // 0 XOR 1 = 1
-        X[1].set(0, 0, 0.0f); X[1].set(1, 0, 1.0f); Y[1].set(0, 0, 1.0f);
-        // 1 XOR 0 = 1
-        X[2].set(0, 0, 1.0f); X[2].set(1, 0, 0.0f); Y[2].set(0, 0, 1.0f);
-        // 1 XOR 1 = 0
-        X[3].set(0, 0, 1.0f); X[3].set(1, 0, 1.0f); Y[3].set(0, 0, 0.0f);
-
-        nn.setDataset(X);
-        nn.setAnnotations(Y);
-
-        // 3. Train
-        System.out.println("Initial Cost: " + nn.cost(4));
-        System.out.println("Training...");
+        // 2. We only want to use si3, si4, and si5 for splits (Columns 3, 4, 5)
+        int[] allowedFeatures = {3, 4, 5}; 
         
-        // 10,000 epochs, full batch (batch size 4)
-        nn.sgd(10000, 4); 
+        // 3. Train the Tree (Max depth 5 prevents it from memorizing the data)
+        DecisionTree tree = new DecisionTree(5, allowedFeatures);
+        tree.train(dataset);
+        System.out.println("Tree built successfully!");
 
-        // 4. Test
-        System.out.println("Final Cost: " + nn.cost(4));
-        System.out.println("\nPredictions after training:");
-        
-        for (int i = 0; i < 4; i++) {
-            nn.feedForward(X[i]);
-            float prediction = nn.getOutput().get(0, 0);
-            float target = Y[i].get(0, 0);
+        // 4. Test it on the same dataset to see your base accuracy
+        int correct = 0;
+        for (int i = 0; i < totalRows; ++i) {
+            // Extract a single row into a 1x8 matrix
+            Matrix sample = new Matrix(1, cols);
+            for (int j = 0; j < cols; ++j) sample.set(0, j, dataset.get(i, j));
             
-            System.out.printf("[%d] XOR [%d] = %.4f (Expected: %.1f)\n", 
-                (int)X[i].get(0,0), (int)X[i].get(1,0), prediction, target);
+            float prediction = tree.predict(sample);
+            float actual = dataset.get(i, cols - 1); // Last col is the label
+            
+            if (Math.abs(prediction - actual) < 0.1f) {
+                correct++;
+            }
         }
+        
+        float accuracy = (float) correct / totalRows * 100.0f;
+        System.out.printf("Accuracy on training data: %.2f%%\n", accuracy);
     }
 }
