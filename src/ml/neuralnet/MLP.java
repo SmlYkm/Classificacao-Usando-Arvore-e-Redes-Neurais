@@ -1,9 +1,10 @@
 package ml.neuralnet;
 
+import java.util.Random;
+
 import ml.Matrix;
 import ml.functions.MathFunction;
 import ml.functions.Sigmoid;
-import java.util.Random;
 
 public class MLP extends FFNN {
     private final int          nLayers;

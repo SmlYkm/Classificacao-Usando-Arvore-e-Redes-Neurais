@@ -1,7 +1,9 @@
 package ml;
 
 import java.util.stream.IntStream;
+
 import ml.functions.MathFunction;
+
 import java.util.Arrays;
 
 public class Matrix {

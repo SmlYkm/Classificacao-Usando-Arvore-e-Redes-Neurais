@@ -1,8 +1,8 @@
+import ml.Matrix;
+import ml.neuralnet.MLP;
 import ml.parser.VitalSignsParserMLP;
 import ml.parser.VitalSignsParserTree;
 import ml.tree.DecisionTree;
-import ml.neuralnet.MLP;
-import ml.Matrix;
 
 public class Main {
     public static void main(String[] args) {

@@ -4,8 +4,10 @@ package ml.tree;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.HashMap;
+
 import ml.Matrix;
+
+import java.util.HashMap;
 
 public class DecisionTree {  // Vibe coded
     private      Node   root;
