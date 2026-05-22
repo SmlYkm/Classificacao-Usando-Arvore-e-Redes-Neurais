@@ -200,7 +200,7 @@ public class Matrix {
     // this = a - b
     public void minus(Matrix a, Matrix b) {
         if (a.rows != b.rows || a.cols != b.cols ||rows != a.rows || cols != a.cols)
-            throw new MatrixException(a, b, this);
+            throw new MatrixException(a, b);
 
         for (int i = 0; i < rows*cols; ++i)
             arr[i] = a.arr[i] - b.arr[i];
@@ -226,7 +226,7 @@ public class Matrix {
     // this = this - m.mulElementwise(scalar)
     public void minusAndMul(Matrix other, float scalar) {
         if (other.rows != rows || other.cols != cols)
-            throw new MatrixException(this, other, this);
+            throw new MatrixException(this, other);
 
         for (int i = 0; i < rows*cols; ++i)
             arr[i] -= other.arr[i] * scalar;

@@ -57,6 +57,11 @@ public class MLP extends FFNN {
     }
 
 
+    public void setLearningRate(float rate) {
+        this.rate = rate;
+    }
+
+
     public void feedForward(Matrix input) {
         activations[0].copy(input);
 
@@ -149,6 +154,7 @@ public class MLP extends FFNN {
     private void shuffle() {
         if (dataset == null || annotations == null || dataset.length != annotations.length)
             return;
+            
         for (int i = dataset.length - 1; i > 0; --i) {
             int pos = randomizer.nextInt(i + 1);
             Matrix temp  = dataset[i];   // sawp inputs
@@ -181,8 +187,7 @@ public class MLP extends FFNN {
         this.batchlen = batchlen;
         this.nBatches = dataset.length / batchlen;
 
-        for (int i = 0; i < epochs; ++i) {
+        for (int i = 0; i < epochs; ++i)
             runEpoch();
-        }
     }
 }
