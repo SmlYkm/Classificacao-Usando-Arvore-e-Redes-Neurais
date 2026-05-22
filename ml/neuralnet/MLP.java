@@ -85,7 +85,7 @@ public class MLP extends FFNN {
     }
 
 
-    public void backprop() {
+    public void backprop(int startIdx, int currentBatchLen) {
         Matrix[] wGrad    = gradient.weights;
         Matrix[] bGrad    = gradient.biases;
         Matrix[] aGrad    = gradient.activations;
@@ -95,11 +95,13 @@ public class MLP extends FFNN {
             bGrad[i].zeroOut();
         }
 
-        for (int i = 0; i < batchlen; ++i) {
-            feedForward(dataset[i]);
+        for (int i = startIdx; i < startIdx + currentBatchLen; ++i) {
+            int idx = (i >= dataset.length) ? i%dataset.length : i;  // In case i goes out of bounds
+            
+            feedForward(dataset[idx]);
 
             aGrad[nLayers].minus(              // dc    d  n (a-y)²   2
-                getOutput(), annotations[i]    // -- = --  Σ -----  = -*(a-y) => 2/n can be ignored because of the learning rate
+                getOutput(), annotations[idx]  // -- = --  Σ -----  = -*(a-y) => 2/n can be ignored because of the learning rate
             );                                 // da   da i=1  n      n
 
             for (int j = 0; j < nLayers; ++j)  // Keep output, zero out the rest
@@ -132,10 +134,10 @@ public class MLP extends FFNN {
     }
 
 
-    private void learn() {
+    private void learn(int currentBatchLen) {
         Matrix wGrad[] = gradient.weights;
         Matrix bGrad[] = gradient.biases;
-        float  n       = rate / (float) batchlen;
+        float  n       = rate / (float) currentBatchLen;
 
         for (int l = 0; l < nLayers; ++l) {
             weights[l].minusAndMul(wGrad[l], n);
@@ -163,27 +165,24 @@ public class MLP extends FFNN {
     private void runEpoch() {
         shuffle();
         for (int j = 0; j < nBatches; ++j) {
-            backprop();
-            learn();
+            backprop(j * batchlen, batchlen);
+            learn(batchlen);
+        }
+        
+        int lastBatchLen = dataset.length % batchlen;
+        if (lastBatchLen > 0) {
+            backprop(nBatches * batchlen, lastBatchLen);
+            learn(lastBatchLen);
         }
     }
 
     // Stochastic Gradient Descent
     public void sgd(int epochs, int batchlen) {
-        this.batchlen    = batchlen;
+        this.batchlen = batchlen;
+        this.nBatches = dataset.length / batchlen;
 
-        int nSamples     = dataset.length;
-        this.nBatches    = nSamples / batchlen;
-        int lastBatchlen = nSamples % batchlen;
-    
-        if (lastBatchlen > 0) {
-            for (int i = 0; i < epochs; ++i) 
-                runEpoch();
-            backprop();
-            learn();
-        } else {
-            for (int i = 0; i < epochs; ++i) 
-                runEpoch();
+        for (int i = 0; i < epochs; ++i) {
+            runEpoch();
         }
     }
 }
