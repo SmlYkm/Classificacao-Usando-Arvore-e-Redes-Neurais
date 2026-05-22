@@ -6,8 +6,8 @@ abstract class FFNN {  // FFNN = feed forward neural net
     protected final Matrix[] activations;
     protected final Matrix[] weights; 
     protected final Matrix[] biases;
-    protected Matrix[]     dataset;
-    protected Matrix[]     annotations;
+    protected       Matrix[] dataset;
+    protected       Matrix[] annotations;
 
     // private class NeuralNetException extends RuntimeException{
     //     NeuralNetException(String message) {
@@ -38,14 +38,14 @@ abstract class FFNN {  // FFNN = feed forward neural net
 
     public void setDataset(Matrix[] dataset) {
         if (annotations != null && dataset != null && dataset.length != annotations.length)
-            return;
+            throw new RuntimeException();
         
         this.dataset = dataset;
     }
 
     public void setAnnotations(Matrix[] annotations) {
         if (annotations != null && dataset != null && dataset.length != annotations.length)
-            return;
+            throw new RuntimeException();
         
         this.annotations = annotations;
     }

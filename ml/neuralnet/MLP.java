@@ -10,7 +10,10 @@ public class MLP extends FFNN {
     private final Grad         gradient;
     private final Random       randomizer;
     private       float        rate;
+    private       int          batchlen;
+    private       int          nBatches;
     private       MathFunction activation;
+
 
     public MLP(int[] arch) {
         super(arch);
@@ -19,7 +22,10 @@ public class MLP extends FFNN {
         gradient    = new Grad(this);
         randomizer  = new Random();
         rate        = 0.5f;           // fallback
+        batchlen    = 0;              // fallback
+        nBatches    = 0;              // fallback
     }
+
 
     private class Grad {  // Auxiliary data class
         public final Matrix[] activations;
@@ -40,11 +46,22 @@ public class MLP extends FFNN {
         }
     }
 
+
+    public Matrix getOutput() {
+        return activations[nLayers];
+    }
+
+
+    public void setActivation(MathFunction f) {
+        activation = f;
+    }
+
+
     public void feedForward(Matrix input) {
         activations[0].copy(input);
 
         for (int i = 0; i < nLayers; ++i) {
-            Matrix w     = weights[i];  // References to w, a, b, for cleaner syntax
+            Matrix w     = weights[i];  // References w, a, b, for cleaner syntax
             Matrix b     = biases[i];
             Matrix a     = activations[i+1];
             Matrix aPrev = activations[i];
@@ -53,9 +70,6 @@ public class MLP extends FFNN {
         }
     }
 
-    Matrix getOutput() {
-        return activations[nLayers];
-    }
 
     public float cost(int batchSize) {
         float total = 0.0f;
@@ -70,8 +84,8 @@ public class MLP extends FFNN {
         return total / (float)batchSize; 
     }
 
+
     public void backprop() {
-        int      batchLen = dataset.length;
         Matrix[] wGrad    = gradient.weights;
         Matrix[] bGrad    = gradient.biases;
         Matrix[] aGrad    = gradient.activations;
@@ -81,7 +95,7 @@ public class MLP extends FFNN {
             bGrad[i].zeroOut();
         }
 
-        for (int i = 0; i < batchLen; ++i) {
+        for (int i = 0; i < batchlen; ++i) {
             feedForward(dataset[i]);
 
             aGrad[nLayers].minus(              // dc    d  n (a-y)²   2
@@ -118,24 +132,23 @@ public class MLP extends FFNN {
     }
 
 
-    public void learn() {
+    private void learn() {
         Matrix wGrad[] = gradient.weights;
         Matrix bGrad[] = gradient.biases;
-        Matrix aGrad[] = gradient.activations;
+        float  n       = rate / (float) batchlen;
 
         for (int l = 0; l < nLayers; ++l) {
-            weights[l].minusAndMul(wGrad[l], rate);
-            biases[l].minusAndMul(bGrad[l], rate);
-            activations[l].minusAndMul(aGrad[l], rate);
+            weights[l].minusAndMul(wGrad[l], n);
+            biases[l].minusAndMul(bGrad[l], n);
         }
     }
+
 
     private void shuffle() {
         if (dataset == null || annotations == null || dataset.length != annotations.length)
             return;
-        for (int i = dataset.length; i > 0; --i) {
-            int pos = randomizer.nextInt(i+1);
-
+        for (int i = dataset.length - 1; i > 0; --i) {
+            int pos = randomizer.nextInt(i + 1);
             Matrix temp  = dataset[i];   // sawp inputs
             dataset[i]   = dataset[pos];
             dataset[pos] = temp;
@@ -146,7 +159,8 @@ public class MLP extends FFNN {
         }
     }
 
-    private void runEpoch(int nBatches) {
+
+    private void runEpoch() {
         shuffle();
         for (int j = 0; j < nBatches; ++j) {
             backprop();
@@ -156,18 +170,20 @@ public class MLP extends FFNN {
 
     // Stochastic Gradient Descent
     public void sgd(int epochs, int batchlen) {
+        this.batchlen    = batchlen;
+
         int nSamples     = dataset.length;
-        int nBatches     = nSamples / batchlen;
+        this.nBatches    = nSamples / batchlen;
         int lastBatchlen = nSamples % batchlen;
     
         if (lastBatchlen > 0) {
             for (int i = 0; i < epochs; ++i) 
-                runEpoch(nBatches);
+                runEpoch();
             backprop();
             learn();
         } else {
             for (int i = 0; i < epochs; ++i) 
-                runEpoch(nBatches);
+                runEpoch();
         }
     }
 }
