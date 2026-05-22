@@ -80,14 +80,15 @@ public class Main {
         System.out.println("\n|/_____________________________|");
         System.out.printf("I'ts over | acc: %.2f%%\n", bestAccuracy);
         
-
-        System.out.println("Twaeking best a little");
-        bestNN.setLearningRate(0.01f); 
-        bestNN.sgd(5000, 32);
-        
-        float finalAcc = evaluateAccuracy(bestNN, dataset, annotations);
-        System.out.printf("It's so over, nothing ever happens. final acc: %.2f%%\n", finalAcc);
-        bestNN.saveModel("vital_signs_weights_best.txt");
+        if (bestNN != null) {
+            System.out.println("Twaeking best a little");
+            bestNN.setLearningRate(0.01f); 
+            bestNN.sgd(5000, 32);
+            
+            float finalAcc = evaluateAccuracy(bestNN, dataset, annotations);
+            System.out.printf("It's so over, nothing ever happens. final acc: %.2f%%\n", finalAcc);
+            bestNN.saveModel("vital_signs_weights_best.txt");
+        }
     }
 
     private static void evaluateTree(int inputCols[], int labelCol, String datasetPath) {

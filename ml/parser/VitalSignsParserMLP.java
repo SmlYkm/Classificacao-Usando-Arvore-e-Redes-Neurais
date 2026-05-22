@@ -6,14 +6,20 @@ import java.util.List;
 import java.util.Scanner;
 import ml.Matrix;
 
-public class VitalSignsParserMLP implements Parser {  // Vibe coded
+// |/_=-= Vibe coded =-=_
+public class VitalSignsParserMLP implements Parser {  
     private final int[] inputCols;
     private final int   labelCol;
+    
+    private float[] mins;
+    private float[] ranges;
+    private boolean isTrained = false;
 
-    // Pass indices of the wanted columns 
     public VitalSignsParserMLP(int[] inputCols, int labelCol) {
         this.inputCols = inputCols;
         this.labelCol  = labelCol;
+        this.mins      = new float[inputCols.length];
+        this.ranges    = new float[inputCols.length];
     }
 
     @Override
@@ -37,12 +43,17 @@ public class VitalSignsParserMLP implements Parser {  // Vibe coded
             e.printStackTrace();
         }
         Matrix[] dataset = inputs.toArray(new Matrix[0]);
-        minMaxScaling(dataset);
+        
+        if (!isTrained) {
+            computeAndSaveMinMax(dataset);
+        } else {
+            applySavedMinMax(dataset);
+        }
 
         return dataset;
     }
 
-@Override
+    @Override
     public Matrix[] getAnnotations(String path) {
         List<Matrix> outputs = new ArrayList<>();
         try (Scanner scanner = new Scanner(new File(path))) {
@@ -57,7 +68,7 @@ public class VitalSignsParserMLP implements Parser {  // Vibe coded
                 
                 int rawClass = (int) Float.parseFloat(parts[labelCol].trim());
                 
-                // Arrays are 0 indexed, so  1 goes 0 and o on
+                // Arrays are 0 indexed, so  1 goes 0 and so on
                 y.set(rawClass - 1, 0, 1.0f); 
                 
                 outputs.add(y);
@@ -68,7 +79,7 @@ public class VitalSignsParserMLP implements Parser {  // Vibe coded
         return outputs.toArray(new Matrix[0]);
     }
 
-    private void minMaxScaling(Matrix[] dataset) {
+    private void computeAndSaveMinMax(Matrix[] dataset) {
         int numFeatures = dataset[0].getRows();
         for (int f = 0; f < numFeatures; f++) {
             float min = Float.MAX_VALUE;
@@ -79,10 +90,27 @@ public class VitalSignsParserMLP implements Parser {  // Vibe coded
                 if (val > max) max = val;
             }
             float range = max - min;
+            
+            mins[f] = min;
+            ranges[f] = range;
+            
             if (range != 0) {
                 for (int i = 0; i < dataset.length; i++) {
                     float val = dataset[i].get(f, 0);
                     dataset[i].set(f, 0, (val - min) / range);
+                }
+            }
+        }
+        isTrained = true; 
+    }
+    
+    private void applySavedMinMax(Matrix[] testDataset) {
+        int numFeatures = testDataset[0].getRows();
+        for (int f = 0; f < numFeatures; f++) {
+            if (ranges[f] != 0) {
+                for (int i = 0; i < testDataset.length; i++) {
+                    float val = testDataset[i].get(f, 0);
+                    testDataset[i].set(f, 0, (val - mins[f]) / ranges[f]);
                 }
             }
         }
