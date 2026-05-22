@@ -1,4 +1,4 @@
-./*.txt
-./*.jar
-./*.class
+*.txt
+*.jar
+*.class
 bin/
