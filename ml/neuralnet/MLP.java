@@ -61,7 +61,7 @@ public class MLP extends FFNN {
         this.rate = rate;
     }
 
-
+    @Override
     public void feedForward(Matrix input) {
         activations[0].copy(input);
 
@@ -75,7 +75,7 @@ public class MLP extends FFNN {
         }
     }
 
-
+    @Override
     public float cost(int batchSize) {
         float total = 0.0f;
 
@@ -187,7 +187,63 @@ public class MLP extends FFNN {
         this.batchlen = batchlen;
         this.nBatches = dataset.length / batchlen;
 
-        for (int i = 0; i < epochs; ++i)
+        for (int i = 0; i < epochs; ++i) {
             runEpoch();
+            if (i % 100 == 0) {
+                String iString = Integer.toString(i);
+                String message = "Processing batch number: " + iString; 
+                System.out.println(message);
+            }
+        }
+    }
+
+    public void saveModel(String filepath) {
+        try (java.io.PrintWriter out = new java.io.PrintWriter(filepath)) {
+            // Write the number of layers first to ensure compatibility
+            out.println(nLayers);
+            
+            for (int i = 0; i < nLayers; ++i) {
+                // Save Weights
+                out.println("W" + i + " " + weights[i].getRows() + " " + weights[i].getCols());
+                for (int j = 0; j < weights[i].getRows() * weights[i].getCols(); ++j)
+                    out.print(weights[i].get(j) + " ");
+                out.println();
+                
+                // Save Biases
+                out.println("B" + i + " " + biases[i].getRows() + " " + biases[i].getCols());
+                for (int j = 0; j < biases[i].getRows() * biases[i].getCols(); ++j)
+                    out.print(biases[i].get(j) + " ");
+                out.println();
+            }
+            System.out.println("Model weights successfully saved to: " + filepath);
+        } catch (Exception e) { 
+            System.err.println("Failed to save model: " + e.getMessage()); 
+        }
+    }
+
+    public void loadModel(String filepath) {
+        try (java.util.Scanner sc = new java.util.Scanner(new java.io.File(filepath))) {
+            int savedLayers = sc.nextInt();
+            if (savedLayers != this.nLayers) {
+                throw new RuntimeException("Architecture mismatch! Saved model has " + savedLayers + " layers, current architecture has " + this.nLayers);
+            }
+            
+            for (int i = 0; i < nLayers; ++i) {
+                sc.next(); // Skip the "W#" label
+                int wRows = sc.nextInt();
+                int wCols = sc.nextInt();
+                for (int j = 0; j < wRows * wCols; ++j)
+                    weights[i].set(j, sc.nextFloat());
+                
+                sc.next(); // Skip the "B#" label
+                int bRows = sc.nextInt();
+                int bCols = sc.nextInt();
+                for (int j = 0; j < bRows * bCols; ++j) 
+                    biases[i].set(j, sc.nextFloat());
+            }
+            System.out.println("Model weights successfully loaded from: " + filepath);
+        } catch (Exception e) { 
+            System.err.println("Failed to load model: " + e.getMessage()); 
+        }
     }
 }

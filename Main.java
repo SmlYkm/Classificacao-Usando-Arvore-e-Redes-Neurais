@@ -1,60 +1,59 @@
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import ml.parser.VitalSignsParser;
+import ml.neuralnet.MLP;
 import ml.Matrix;
-import ml.tree.DecisionTree;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
-        // 1. Read the dataset
-        List<float[]> dataList = new ArrayList<>();
-        Scanner scanner = new Scanner(new File("02_treino_sinais_vitais_com_label.txt"));
+    public static void main(String[] args) {
+        // 1. Initialize Parser (Inputs = cols 3,4,5. Target = col 7)
+        int[] inputCols = {3, 4, 5};
+        VitalSignsParser parser = new VitalSignsParser(inputCols, 7);
         
-        while (scanner.hasNextLine()) {
-            String[] parts = scanner.nextLine().trim().split(",");
-            float[] row = new float[parts.length];
-            for (int i = 0; i < parts.length; i++) {
-                row[i] = Float.parseFloat(parts[i]);
-            }
-            dataList.add(row);
-        }
-        scanner.close();
+        Matrix[] dataset = parser.getDataset("02_treino_sinais_vitais_com_label.txt");
+        Matrix[] annotations = parser.getAnnotations("02_treino_sinais_vitais_com_label.txt");
 
-        // Populate Matrix
-        int totalRows = dataList.size();
-        int cols = dataList.get(0).length;
-        Matrix dataset = new Matrix(totalRows, cols);
-        for (int i = 0; i < totalRows; i++) {
-            for (int j = 0; j < cols; j++) {
-                dataset.set(i, j, dataList.get(i)[j]);
-            }
-        }
+        // 2. Setup Neural Network
+        int[] arch = {3, 8, 3, 1}; // 3 inputs, 8 hidden, 1 output
+        MLP nn = new MLP(arch);
+        nn.setDataset(dataset);
+        nn.setAnnotations(annotations);
+        nn.setLearningRate(0.01f);
 
-        // 2. We only want to use si3, si4, and si5 for splits (Columns 3, 4, 5)
-        int[] allowedFeatures = {3, 4, 5}; 
-        
-        // 3. Train the Tree (Max depth 5 prevents it from memorizing the data)
-        DecisionTree tree = new DecisionTree(5, allowedFeatures);
-        tree.train(dataset);
-        System.out.println("Tree built successfully!");
+        // 3. Train and Save
+        System.out.println("Training...");
+        nn.sgd(20000, 32); 
 
-        // 4. Test it on the same dataset to see your base accuracy
+        System.out.println("Testing Neural Network...");
         int correct = 0;
-        for (int i = 0; i < totalRows; ++i) {
-            // Extract a single row into a 1x8 matrix
-            Matrix sample = new Matrix(1, cols);
-            for (int j = 0; j < cols; ++j) sample.set(0, j, dataset.get(i, j));
+        
+        for (int i = 0; i < dataset.length; i++) {
+            // 1. Feed the sample into the network
+            nn.feedForward(dataset[i]);
             
-            float prediction = tree.predict(sample);
-            float actual = dataset.get(i, cols - 1); // Last col is the label
+            // 2. Get the raw prediction (e.g., 0.73)
+            float rawPrediction = nn.getOutput().get(0, 0);
             
-            if (Math.abs(prediction - actual) < 0.1f) {
+            // 3. DE-NORMALIZE: Multiply by 4 and round to nearest int
+            int predictedClass = Math.round(rawPrediction * 4.0f);
+            
+            // Clamp it just in case the network outputs something extreme like 0.01
+            predictedClass = Math.max(1, Math.min(4, predictedClass)); 
+            
+            // 4. De-normalize the actual answer to compare
+            int actualClass = Math.round(annotations[i].get(0, 0) * 4.0f);
+            
+            if (predictedClass == actualClass) {
                 correct++;
             }
         }
         
-        float accuracy = (float) correct / totalRows * 100.0f;
-        System.out.printf("Accuracy on training data: %.2f%%\n", accuracy);
+        float nnAccuracy = (float) correct / dataset.length * 100.0f;
+        System.out.printf("Neural Network Accuracy: %.2f%%\n", nnAccuracy);
+
+
+        nn.saveModel("vital_signs_weights.txt");
+
+        // 4. Load later (even in a different execution)
+        MLP loadedNN = new MLP(arch);
+        loadedNN.loadModel("vital_signs_weights.txt");
     }
 }
